@@ -38,66 +38,7 @@ A final **Synthesizer Agent** combines the findings from all specialists into on
 ---
 
 # 🏗️ Architecture
-
-```text
-                    ┌──────────────────────┐
-                    │     Repository       │
-                    │    User's Codebase   │
-                    └──────────┬───────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │   Initial Analyzer    │
-                    │       Gemini          │
-                    └──────────┬───────────┘
-                               │
-                         Issues Found?
-                               │
-                    ┌──────────┴──────────┐
-                    │                     │
-                   YES                    NO
-                    │                     │
-          ┌─────────┼─────────┐           ▼
-          ▼         ▼         ▼      ┌────────────┐
-      Security  Performance  Style   │ Clean      │
-       Agent      Agent      Agent   │ Report     │
-          │         │         │      └────────────┘
-          │         │         │
-          ▼         ▼         ▼
-       ┌───────────────────────────────┐
-       │          Tool Layer           │
-       │                               │
-       │  search_code                  │
-       │  read_file                    │
-       │  run_test                     │
-       │  run_linter                   │
-       └───────────────┬───────────────┘
-                       │
-                       ▼
-              ┌──────────────────┐
-              │   ReAct Loop     │
-              │                  │
-              │ Think → Tool →   │
-              │ Result → Think   │
-              └────────┬─────────┘
-                       │
-                       ▼
-              ┌──────────────────┐
-              │   Synthesizer    │
-              │      Groq        │
-              └────────┬─────────┘
-                       │
-                       ▼
-              ┌──────────────────┐
-              │   Final Report   │
-              │                  │
-              │ Summary          │
-              │ Issues           │
-              │ Recommendations  │
-              │ Action Items     │
-              └──────────────────┘
-```
-
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/6a4b48c73f54ebe2618f208545656d5eaff8a31f/codeReview_Workflow.png)
 ---
 
 # 🧠 How It Works
@@ -738,47 +679,6 @@ This reduces false positives compared with simply asking an LLM:
 ```text
 "Find security problems in this code."
 ```
-
----
-
-# 📈 Example Output
-
-A completed review can produce:
-
-```text
-Code Review Report
-
-Summary
--------
-The codebase was reviewed by three specialist agents.
-
-Issues by Category
-------------------
-Security:
-None confirmed
-
-Performance:
-None confirmed
-
-Style:
-None confirmed
-
-Recommendations
----------------
-• Run dependency audits regularly
-• Add automated testing to CI
-• Maintain consistent code style
-• Keep project documentation updated
-
-Action Items
-------------
-• Set up automated dependency audit
-• Add performance profiling
-• Update PR review checklist
-• Review documentation
-```
-
-The frontend also displays the intermediate investigation process through the live traces.
 
 ---
 
