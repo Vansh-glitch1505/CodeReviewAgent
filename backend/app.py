@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
 
 from tools import make_agent_tools
@@ -110,11 +111,27 @@ class CodeReviewState(TypedDict):
 
 class SimpleCodeReviewAgent:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+        # Keep both LLMs available so the workload is split across providers.
+        self.gemini_llm = ChatGoogleGenerativeAI(
+            model="gemini-3.6-flash",
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.3,
         )
+
+        self.groq_llm = ChatGroq(
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.3,
+        )
+
+        # Which provider handles each part of the existing pipeline.
+        # The graph, tools, state, prompts and SSE output stay unchanged.
+        self.specialist_llms = {
+            "security": self.groq_llm,
+            "performance": self.gemini_llm,
+            "style": self.groq_llm,
+        }
+
         self.graph = self._build_graph()
 
     # ---- helpers ----
@@ -184,7 +201,7 @@ class SimpleCodeReviewAgent:
         Focus on: purpose, structure and concerns.
         End your response with exactly one line: "VERDICT: ISSUES" or "VERDICT: CLEAN"
 """
-        response = self.llm.invoke(prompt)
+        response = self.gemini_llm.invoke(prompt)
         analysis = self._to_text(response.content)
         has_issues = "VERDICT: ISSUES" in analysis.upper()
         return {"code": code, "initial_analysis": analysis, "has_issues": has_issues}
@@ -201,7 +218,7 @@ class SimpleCodeReviewAgent:
         messages_key, iters_key, trace_key = cfg["messages_key"], cfg["iters_key"], cfg["trace_key"]
 
         tools = make_agent_tools(state["repo_path"])
-        llm_with_tools = self.llm.bind_tools(tools)
+        llm_with_tools = self.specialist_llms[key].bind_tools(tools)
 
         existing = state.get(messages_key)
         if not existing:
@@ -302,7 +319,7 @@ class SimpleCodeReviewAgent:
         Performance findings: {state['performance_findings']}
         Style findings: {state['style_findings']}
 """
-        response = self.llm.invoke(prompt)
+        response = self.groq_llm.invoke(prompt)
         return {"final_report": self._to_text(response.content)}
 
     def _finish_clean(self, state: CodeReviewState) -> Dict:
