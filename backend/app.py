@@ -1,4 +1,5 @@
 import json
+import time
 from typing import TypedDict, List, Dict, Annotated
 import os
 import operator
@@ -18,6 +19,14 @@ load_dotenv()
 
 MAX_SPECIALIST_ITERS = 4
 SPECIALISTS = ("security", "performance", "style")
+
+# Groq's TPM (8000) is far smaller than Gemini's, so give each specialist
+# its own snapshot budget instead of feeding everyone the full 40KB snapshot.
+SPECIALIST_SNAPSHOT_CHARS = {
+    "security": 10_000,     # groq
+    "performance": 35_000,  # gemini — much higher limit, keep full snapshot
+    "style": 10_000,        # groq
+}
 
 SPECIALIST_PROMPTS = {
     "security": (
@@ -72,6 +81,59 @@ class CodeReviewState(TypedDict):
     style_iterations: int
 
     final_report: str
+
+
+# ---------------------------------------------------------------------------
+# Token-budget helpers (Groq TPM = 8000, so specialist message history must
+# be trimmed before every invoke, not just at the start).
+# ---------------------------------------------------------------------------
+
+def _approx_tokens(text: str) -> int:
+    return len(text) // 4  # rough heuristic, ~4 chars/token
+
+
+def _msg_text(m) -> str:
+    c = m.content
+    return c if isinstance(c, str) else str(c)
+
+
+def _trim_messages_to_budget(messages: List, budget_tokens: int = 5500) -> List:
+    """Keep SystemMessage + as many recent messages as fit in budget_tokens.
+    Older ToolMessages get truncated (not dropped) so context isn't lost entirely."""
+    system = [m for m in messages if isinstance(m, SystemMessage)]
+    rest = [m for m in messages if not isinstance(m, SystemMessage)]
+
+    total = sum(_approx_tokens(_msg_text(m)) for m in system)
+    kept = []
+    for m in reversed(rest):  # newest first
+        t = _approx_tokens(_msg_text(m))
+        if total + t > budget_tokens:
+            if isinstance(m, ToolMessage):
+                truncated = _msg_text(m)[:600] + "\n...[truncated to fit token budget]"
+                t2 = _approx_tokens(truncated)
+                if total + t2 <= budget_tokens:
+                    kept.append(ToolMessage(content=truncated, tool_call_id=m.tool_call_id))
+                    total += t2
+            continue  # drop if it still doesn't fit
+        kept.append(m)
+        total += t
+    kept.reverse()
+    return system + kept
+
+
+def _invoke_with_backoff(llm, messages, retries: int = 3):
+    """Invoke with retry + harder trimming if we still hit a 413/429."""
+    for attempt in range(retries):
+        try:
+            return llm.invoke(messages)
+        except Exception as e:
+            msg = str(e)
+            rate_limited = "429" in msg or "413" in msg or "rate_limit" in msg.lower()
+            if rate_limited and attempt < retries - 1:
+                messages = _trim_messages_to_budget(messages, budget_tokens=3500)
+                time.sleep(2 ** attempt)
+                continue
+            raise
 
 
 class SimpleCodeReviewAgent:
@@ -154,14 +216,19 @@ class SimpleCodeReviewAgent:
 
         existing = state.get(messages_key)
         if not existing:
+            snapshot = state["code"]
+            limit = SPECIALIST_SNAPSHOT_CHARS.get(key)
+            if limit and len(snapshot) > limit:
+                snapshot = snapshot[:limit] + "\n...[snapshot truncated for token budget]"
             messages = [
                 SystemMessage(content=SPECIALIST_PROMPTS[key]),
-                HumanMessage(content=f"Repo snapshot for context:\n{state['code']}\n\nInvestigate now."),
+                HumanMessage(content=f"Repo snapshot for context:\n{snapshot}\n\nInvestigate now."),
             ]
         else:
             messages = existing
 
-        response = llm_with_tools.invoke(messages)
+        trimmed = _trim_messages_to_budget(messages)
+        response = _invoke_with_backoff(llm_with_tools, trimmed)
         delta = [response] if existing else messages + [response]
         return {messages_key: delta, iters_key: state.get(iters_key, 0) + 1}
 
