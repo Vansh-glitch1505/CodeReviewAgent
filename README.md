@@ -2,52 +2,52 @@
 
 ### Multi-Agent AI Code Review System using LangGraph, Gemini & Groq
 
-CodeReviewAgent is an **agentic AI-powered code review system** that automatically analyzes a software repository using multiple specialized AI agents.
+CodeReviewAgent is an **agentic AI-powered code review system** that analyzes a software repository using multiple specialized AI agents.
 
-Instead of relying on a single LLM to review the entire codebase, the system creates **three independent specialist agents**:
+Instead of relying on a single LLM, the system uses three independent specialists:
 
-* 🛡️ **Security Agent** — searches for security vulnerabilities
-* ⚡ **Performance Agent** — investigates performance bottlenecks
-* 🎨 **Style Agent** — checks code quality, readability, and consistency
+* 🛡️ **Security Agent** — detects security vulnerabilities
+* ⚡ **Performance Agent** — identifies performance bottlenecks
+* 🎨 **Style Agent** — checks code quality and maintainability
 
-Each specialist can independently decide which tools to use, inspect the repository, investigate potential problems, and verify findings before reporting them.
-
-A final **Synthesizer Agent** combines the findings from all specialists into one structured code review report.
+A final **Synthesizer Agent** combines their findings into a structured code review report.
 
 ---
 
 ## ✨ Features
 
-* 🤖 **Multi-Agent Architecture**
-* 🧠 **LangGraph-based orchestration**
-* 🔄 **ReAct-style tool-calling loop**
-* 🛡️ Security vulnerability analysis
-* ⚡ Performance bottleneck detection
-* 🎨 Code style and readability analysis
+* 🤖 Multi-Agent Architecture
+* 🧠 LangGraph orchestration
+* 🔄 ReAct-style tool-calling
+* 🛡️ Security analysis
+* ⚡ Performance analysis
+* 🎨 Code style analysis
 * 🔍 Repository-wide code search
 * 📄 File inspection
-* 🧪 Test execution for verification
+* 🧪 Test execution
 * 🔧 Category-specific linting
-* 📡 Real-time streaming using Server-Sent Events (SSE)
+* 📡 Real-time streaming using SSE
 * 📊 Live agent execution traces
-* 📝 Automatically generated final review report
-* 🔀 Gemini + Groq LLM integration
+* 📝 Automated review reports
+* 🔀 Gemini + Groq integration
 * 🌐 FastAPI backend
 * 🖥️ Gradio frontend
 
 ---
 
 # 🏗️ Architecture
+
 ![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/6a4b48c73f54ebe2618f208545656d5eaff8a31f/codeReview_Workflow.png)
+
 ---
 
 # 🧠 How It Works
 
-## 1. Repository Analysis
+### 1. Repository Analysis
 
-The user provides the path of a local repository.
+The user provides a local repository path.
 
-The system creates a lightweight snapshot of supported source files such as:
+The system creates a lightweight snapshot of supported source files:
 
 ```text
 .py
@@ -57,7 +57,7 @@ The system creates a lightweight snapshot of supported source files such as:
 .tsx
 ```
 
-Large or unnecessary directories such as:
+Large or unnecessary directories are excluded:
 
 ```text
 .git
@@ -69,23 +69,17 @@ build
 venv
 ```
 
-are excluded from the snapshot.
+The snapshot provides the initial context for the analyzer.
 
-The snapshot is used to give the initial analyzer context about the project.
+### 2. Initial Analyzer
 
----
-
-## 2. Initial Analyzer
-
-The first AI node performs a high-level analysis of the repository.
-
-It focuses on:
+The analyzer performs a high-level review focused on:
 
 * Project purpose
 * Code structure
 * Potential concerns
 
-The analyzer finishes with one of two verdicts:
+It returns either:
 
 ```text
 VERDICT: ISSUES
@@ -97,17 +91,15 @@ or
 VERDICT: CLEAN
 ```
 
-If the repository appears clean, the graph can finish early.
-
-If issues are detected, the review is routed to all three specialist agents.
+If the repository is clean, the workflow can finish early. Otherwise, the review is routed to all three specialist agents.
 
 ---
 
 # 🤖 Multi-Agent Review
 
-## 🛡️ Security Agent
+### 🛡️ Security Agent
 
-The Security Agent focuses specifically on security-related problems such as:
+Investigates issues such as:
 
 * Injection vulnerabilities
 * Authentication flaws
@@ -116,32 +108,22 @@ The Security Agent focuses specifically on security-related problems such as:
 * SSRF
 * Other exploitable security issues
 
-It first uses the security linter and then investigates suspicious locations using repository tools.
+The agent uses security linting and repository tools to verify suspicious findings.
 
-The agent is instructed to report only **confirmed issues**, rather than simply guessing that something might be vulnerable.
+### ⚡ Performance Agent
 
----
-
-## ⚡ Performance Agent
-
-The Performance Agent investigates potential bottlenecks such as:
+Investigates:
 
 * N+1 queries
-* Blocking synchronous operations
+* Blocking operations
 * Unnecessary computation
 * Redundant work
 * Memory-related issues
-* Expensive operations inside loops or frequently executed paths
+* Expensive operations in loops or frequently executed paths
 
-It can inspect surrounding code and use tests for quick performance verification when necessary.
+### 🎨 Style Agent
 
----
-
-## 🎨 Style Agent
-
-The Style Agent focuses on maintainability and readability.
-
-It investigates:
+Focuses on:
 
 * Naming conventions
 * Code organization
@@ -151,144 +133,114 @@ It investigates:
 * Magic numbers
 * Repeated structural patterns
 
-Unlike the other specialists, the Style Agent generally does not need to execute tests because style issues can usually be verified through source inspection.
+The specialists are instructed to investigate evidence before reporting an issue.
 
 ---
 
 # 🔧 Agent Tools
 
-The specialist agents have access to four tools:
+The agents can use four tools:
 
-| Tool          | Purpose                                          |
-| ------------- | ------------------------------------------------ |
-| `search_code` | Search the repository for relevant code patterns |
-| `read_file`   | Read a specific file for deeper investigation    |
-| `run_test`    | Execute a small test or verification script      |
-| `run_linter`  | Run category-specific linting checks             |
+| Tool          | Purpose                                     |
+| ------------- | ------------------------------------------- |
+| `search_code` | Search the repository for relevant patterns |
+| `read_file`   | Inspect files in detail                     |
+| `run_test`    | Run tests or verification scripts           |
+| `run_linter`  | Perform category-specific linting           |
 
-The important part is that **the LLM decides when to use these tools**.
+The important part is that **the LLM decides when and which tools to use**.
 
-For example:
+A typical investigation can look like:
 
 ```text
-Security Agent
+Specialist Agent
       ↓
-run_linter("security")
+   Run Linter
       ↓
-Potential issue found
+Potential Issue
       ↓
-search_code(...)
+  Search Code
       ↓
-read_file(...)
+   Read File
       ↓
-run_test(...)
+   Run Test
       ↓
-Confirmed / rejected
+Confirmed / Rejected
 ```
 
-This makes the system more than a simple prompt-based code reviewer.
+This allows the system to investigate findings rather than simply generating a review from a single prompt.
 
 ---
 
-# 🔄 ReAct Agent Loop
+# 🔄 ReAct Workflow
 
-Each specialist follows a ReAct-style workflow:
+Each specialist follows a ReAct-style loop:
 
 ```text
-        ┌───────────────┐
-        │   Specialist  │
-        │     Agent     │
-        └───────┬───────┘
-                │
-                ▼
-          Decide what to do
-                │
-        ┌───────┴───────┐
-        │               │
-     Use Tool        Conclude
-        │               │
-        ▼               ▼
-   Tool Result      Findings
-        │
-        └───────► Agent
-                   │
-                   ▼
-              Use another
-                 tool
+Analyze Evidence
+      ↓
+Choose Tool
+      ↓
+Execute Tool
+      ↓
+Analyze Result
+      ↓
+Investigate Further
+      ↓
+Conclude
 ```
 
-The agent can repeatedly:
-
-1. Analyze the available evidence
-2. Select a tool
-3. Receive the tool result
-4. Analyze the result
-5. Continue investigating
-6. Conclude once enough evidence is available
-
-Each specialist is limited to a maximum number of investigation iterations to prevent endless tool-calling loops.
+Agents can repeatedly use tools based on what they discover, with a maximum number of iterations to prevent endless tool-calling loops.
 
 ---
 
 # 🔀 LLM Provider Architecture
 
-The project uses multiple LLM providers:
+| Component         | Provider      |
+| ----------------- | ------------- |
+| Initial Analyzer  | Google Gemini |
+| Security Agent    | Groq          |
+| Performance Agent | Google Gemini |
+| Style Agent       | Groq          |
+| Final Synthesizer | Groq          |
 
-| Component         | Model Provider |
-| ----------------- | -------------- |
-| Initial Analyzer  | Google Gemini  |
-| Security Agent    | Groq           |
-| Performance Agent | Google Gemini  |
-| Style Agent       | Groq           |
-| Final Synthesizer | Groq           |
+Using multiple providers allows different parts of the pipeline to distribute workloads across different LLMs.
 
-This demonstrates how an agentic pipeline can distribute different workloads across multiple LLM providers instead of depending on a single model.
-
-The LLM configuration is handled through environment variables.
+Configuration is handled through environment variables.
 
 ---
 
 # 📡 Real-Time Streaming
 
-The backend exposes a streaming endpoint:
+The backend exposes:
 
 ```text
 POST /review/stream
 ```
 
-Instead of waiting for the entire review to finish, the frontend receives agent updates as they happen.
+The review is streamed to the frontend using **Server-Sent Events (SSE)**.
 
-The backend uses:
-
-```text
-Server-Sent Events (SSE)
-```
-
-to stream information such as:
+Instead of waiting for the complete review, the UI receives updates such as:
 
 ```text
 Security Agent
-    ↓
+      ↓
 run_linter
-    ↓
+      ↓
 search_code
-    ↓
+      ↓
 read_file
-    ↓
+      ↓
 concluded
 ```
 
-This is what powers the **Live Trace** section in the frontend.
-
-The UI can therefore show what each specialist is doing while the review is running.
+This powers the **Live Trace** interface and allows users to see what each agent is doing in real time.
 
 ---
 
 # 📊 Final Report
 
-After the three specialists finish, their findings are passed to a final synthesizer.
-
-The synthesizer combines:
+Once the specialist agents finish, their findings are passed to the Synthesizer:
 
 ```text
 Security Findings
@@ -300,57 +252,40 @@ Style Findings
 Final Synthesized Report
 ```
 
-The report contains sections such as:
+The final report includes:
 
-### Summary
+* **Summary**
+* **Issues by Category**
+* **Recommendations**
+* **Action Items**
 
-A high-level overview of the review.
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2012.58.39.jpeg)
 
-### Issues by Category
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.01.37.jpeg)
 
-```text
-Security
-Performance
-Style
-```
-
-### Recommendations
-
-Suggested improvements based on the findings.
-
-### Action Items
-
-Practical tasks that can be assigned to owners with suggested deadlines.
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.00.30.jpeg)
 
 ---
-![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2012.58.39.jpeg)
-![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.01.37.jpeg)
-![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.00.30.jpeg)
 
 # 🖥️ Frontend
 
-The frontend is built with **React, Vite, Tailwind CSS, and Framer Motion** and communicates with the FastAPI backend.
-
-It provides a modern developer-tool interface for running and monitoring AI-powered code reviews.
+The frontend provides a developer-tool interface for running and monitoring AI-powered code reviews.
 
 ### Features
 
 * Repository path input
-* Backend connection health status
-* Real-time LangGraph workflow visualization
-* Security Agent monitoring
-* Performance Agent monitoring
-* Style Agent monitoring
-* Live agent/tool execution trace using SSE
-* Initial repository analysis
-* Categorized findings by Security, Performance, and Style
-* Severity-based finding indicators
+* Backend health status
+* LangGraph workflow visualization
+* Security, Performance & Style monitoring
+* Live agent/tool traces
+* Categorized findings
+* Severity indicators
 * Expandable finding details
-* Synthesized final review report
-* Syntax-highlighted code viewing when file/line information is available
-* Responsive dark developer-tool interface
+* Final synthesized report
+* Syntax-highlighted code viewing
+* Responsive dark developer interface
 
-### Example Workflow
+### Workflow
 
 ```text
 Enter Repository Path
@@ -366,11 +301,11 @@ Enter Repository Path
         ↓
  Live Agent Tool Traces
         ↓
-   Findings by Category
+ Findings by Category
         ↓
     Synthesizer
         ↓
-   Final Review Report
+ Final Review Report
 ```
 
 ---
@@ -378,30 +313,23 @@ Enter Repository Path
 # 📁 Project Structure
 
 ```text
-agentic_ai/
+CodeReviewAgent-LangGraph/
 │
-├── .vscode/
-│   └── settings.json
+├── backend/
+│   ├── .env
+│   ├── app.py
+│   └── tools.py
 │
-└── CodeReviewAgent-LangGraph/
-    │
-    ├── backend/
-    │   ├── __pycache__/
-    │   ├── .env
-    │   ├── app.py
-    │   └── tools.py
-    │
-    ├── Frontend/
-    │   ├── __pycache__/
-    │   └── app_ui.py
-    │
-    ├── .gitignore
-    └── README.md
+├── Frontend/
+│   └── app_ui.py
+│
+├── .gitignore
+└── README.md
 ```
 
 ### Backend
 
-`app.py`
+**`app.py`**
 
 Contains:
 
@@ -414,13 +342,13 @@ Contains:
 * FastAPI endpoints
 * SSE streaming
 
-`tools.py`
+**`tools.py`**
 
-Contains the tools used by the specialist agents.
+Contains the repository search, file inspection, testing, and linting tools used by the agents.
 
 ### Frontend
 
-`app_ui.py`
+**`app_ui.py`**
 
 Contains the Gradio interface and communicates with the FastAPI backend.
 
@@ -448,9 +376,9 @@ Contains the Gradio interface and communicates with the FastAPI backend.
 
 ### Agent Tools
 
-* Repository search
-* File reading
-* Test execution
+* Repository Search
+* File Reading
+* Test Execution
 * Linting
 
 ### Communication
@@ -469,8 +397,6 @@ git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
 cd CodeReviewAgent-LangGraph
 ```
 
----
-
 ## 2. Create a Virtual Environment
 
 ### Windows
@@ -487,46 +413,41 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
----
-
 ## 3. Install Dependencies
-
-Install the required packages:
 
 ```bash
 pip install langgraph langchain langchain-core langchain-google-genai langchain-groq fastapi uvicorn python-dotenv pydantic gradio
 ```
 
-If your `tools.py` uses additional packages for linting or testing, install those as well.
+Install any additional packages required by `tools.py` for linting or testing.
 
 ---
 
 # 🔐 Environment Variables
 
-Create a `.env` file inside:
+Create:
 
 ```text
 backend/.env
 ```
 
-Add your API credentials:
+Add:
 
 ```env
 GOOGLE_API_KEY=your_google_api_key
 GROQ_API_KEY=your_groq_api_key
-
 GROQ_MODEL=openai/gpt-oss-20b
 ```
 
-> ⚠️ Never commit your `.env` file to GitHub.
+⚠️ Never commit `.env` to GitHub.
 
-Make sure `.env` is included in `.gitignore`.
+Make sure it is included in `.gitignore`.
 
 ---
 
 # ▶️ Running the Application
 
-The application consists of two parts:
+The application consists of:
 
 ```text
 FastAPI Backend
@@ -534,24 +455,20 @@ FastAPI Backend
 Gradio Frontend
 ```
 
-## Start the Backend
-
-From the backend directory:
+### Start Backend
 
 ```bash
 cd backend
 python app.py
 ```
 
-The FastAPI server runs on:
+Backend:
 
 ```text
 http://localhost:8000
 ```
 
----
-
-## Start the Frontend
+### Start Frontend
 
 Open another terminal:
 
@@ -560,12 +477,11 @@ cd Frontend
 python app_ui.py
 ```
 
-Then open the Gradio URL displayed in your terminal.
+Open the Gradio URL shown in the terminal.
 
-The frontend should use:
+The frontend connects to:
 
 ```text
-Backend URL:
 http://localhost:8000
 ```
 
@@ -575,7 +491,7 @@ http://localhost:8000
 
 ## `POST /review`
 
-Runs the complete review and returns the final result after processing.
+Runs the complete review and returns the final result.
 
 Example request:
 
@@ -586,7 +502,7 @@ Example request:
 }
 ```
 
-Example response structure:
+Example response:
 
 ```json
 {
@@ -603,15 +519,11 @@ Example response structure:
 }
 ```
 
----
-
 ## `POST /review/stream`
 
-Runs the review while streaming graph updates using SSE.
+Runs the review while streaming LangGraph updates using SSE.
 
-This endpoint is used by the frontend to display the live agent trace.
-
-The stream contains updates from nodes such as:
+The stream includes nodes such as:
 
 ```text
 analyzer
@@ -631,8 +543,6 @@ synthesizer
 
 # 🧩 LangGraph Workflow
 
-The underlying workflow can be represented as:
-
 ```text
                     START
                       │
@@ -641,100 +551,92 @@ The underlying workflow can be represented as:
                  │ Analyzer│
                  └────┬────┘
                       │
-              ┌───────┴───────┐
-              │               │
-         Issues Found?       Clean
-              │               │
-             YES              ▼
-              │         finish_clean
-      ┌───────┼───────┐
-      ▼       ▼       ▼
-   Security Performance Style
-      │       │       │
-      ▼       ▼       ▼
-   Tool Loop Tool Loop Tool Loop
-      │       │       │
-      ▼       ▼       ▼
-   Conclude Conclude Conclude
-      └───────┼───────┘
-              ▼
-         Synthesizer
-              │
-              ▼
-             END
+               Issues Found?
+                 │         │
+                YES       NO
+                 │         │
+       ┌─────────┼─────────┐
+       ▼         ▼         ▼
+   Security  Performance  Style
+       │         │         │
+       ▼         ▼         ▼
+   Tool Loop  Tool Loop  Tool Loop
+       │         │         │
+       ▼         ▼         ▼
+    Conclude  Conclude  Conclude
+       └─────────┼─────────┘
+                 ▼
+            Synthesizer
+                 │
+                 ▼
+                END
 ```
 
-This graph allows the three specialist agents to investigate independently before their results are merged.
+The three specialist agents investigate independently before their findings are merged by the Synthesizer.
 
 ---
 
 # 🛡️ Design Philosophy
 
-The system is designed around one important principle:
+The system follows one core principle:
 
 > **Don't report a potential issue until there is enough evidence to support it.**
 
-For example, the Security Agent may find something that looks like a secret:
+For example:
 
 ```text
-Potential secret found
-        ↓
-search surrounding code
-        ↓
-read relevant file
-        ↓
-determine whether it is actually sensitive
-        ↓
-confirm or reject finding
+Potential Issue
+      ↓
+Search Code
+      ↓
+Read Relevant File
+      ↓
+Verify Evidence
+      ↓
+Confirm / Reject
 ```
 
-This reduces false positives compared with simply asking an LLM:
-
-```text
-"Find security problems in this code."
-```
+This helps reduce false positives compared with simply asking an LLM to find problems in a codebase.
 
 ---
 
 # 🎯 Why This Project Is Agentic
 
-This project is not simply:
+The system goes beyond:
 
 ```text
 Code → LLM → Review
 ```
 
-Instead, it follows an agentic workflow:
+Instead:
 
 ```text
 Code
  ↓
-Planner / Analyzer
+Analyzer
  ↓
 Specialist Agents
  ↓
-LLM decides which tool to use
+LLM chooses tools
  ↓
 Tool execution
  ↓
-Tool result
+Tool results
  ↓
 Further investigation
  ↓
-Specialist conclusion
+Specialist conclusions
  ↓
-Multi-agent synthesis
+Multi-Agent Synthesis
  ↓
-Final report
+Final Report
 ```
 
-The key agentic behavior is that the specialists can **choose and repeatedly use tools based on what they discover**.
+The key agentic behavior is that agents can **choose and repeatedly use tools based on the evidence they discover**.
 
 ---
 
 # 🔮 Future Improvements
-
-Possible extensions include:
 
 * GitHub repository integration
 * Pull Request review automation
@@ -748,18 +650,17 @@ Possible extensions include:
 * Dependency vulnerability scanning
 * Persistent review history
 * Review comparison across commits
-* Support for additional programming languages
+* Additional programming languages
 * Human approval before applying fixes
 
 ---
 
 # 📌 Limitations
 
-Currently, the system primarily works with repositories available on the local filesystem.
-
-The initial repository snapshot is also intentionally limited in size, meaning extremely large repositories may not have their entire contents included in the initial context.
-
-The specialist agents compensate for this by using repository tools to search and inspect specific files during their investigation.
+* Currently focused primarily on repositories available on the local filesystem.
+* The initial repository snapshot is intentionally limited in size.
+* Extremely large repositories may not fit entirely into the initial context.
+* Repository tools allow agents to search and inspect specific files when additional context is required.
 
 ---
 
