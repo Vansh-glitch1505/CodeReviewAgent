@@ -323,40 +323,53 @@ Suggested improvements based on the findings.
 Practical tasks that can be assigned to owners with suggested deadlines.
 
 ---
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2012.58.39.jpeg)
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.01.37.jpeg)
 
 # 🖥️ Frontend
 
-The frontend is built with **Gradio** and communicates with the FastAPI backend.
+The frontend is built with **React, Vite, Tailwind CSS, and Framer Motion** and communicates with the FastAPI backend.
 
-It provides:
+It provides a modern developer-tool interface for running and monitoring AI-powered code reviews.
+
+### Features
 
 * Repository path input
-* Backend URL configuration
-* Review trigger
-* Initial analysis
-* Security live trace
-* Performance live trace
-* Style live trace
-* Findings by category
-* Final generated report
+* Backend connection health status
+* Real-time LangGraph workflow visualization
+* Security Agent monitoring
+* Performance Agent monitoring
+* Style Agent monitoring
+* Live agent/tool execution trace using SSE
+* Initial repository analysis
+* Categorized findings by Security, Performance, and Style
+* Severity-based finding indicators
+* Expandable finding details
+* Synthesized final review report
+* Syntax-highlighted code viewing when file/line information is available
+* Responsive dark developer-tool interface
 
-Example workflow:
+### Example Workflow
 
 ```text
 Enter Repository Path
         ↓
-Run Review
+   Run Code Review
         ↓
-Initial Analysis
+   Initial Analyzer
         ↓
 ┌───────────┬─────────────┬───────────┐
 │ Security  │ Performance │   Style   │
 │   Agent   │    Agent    │   Agent   │
 └───────────┴─────────────┴───────────┘
         ↓
-Live Tool Traces
+ Live Agent Tool Traces
         ↓
-Final Report
+   Findings by Category
+        ↓
+    Synthesizer
+        ↓
+   Final Review Report
 ```
 
 ---
