@@ -325,6 +325,7 @@ Practical tasks that can be assigned to owners with suggested deadlines.
 ---
 ![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2012.58.39.jpeg)
 ![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.01.37.jpeg)
+![](https://github.com/Vansh-glitch1505/CodeReviewAgent/blob/main/WhatsApp%20Image%202026-09-12%20at%2013.00.30.jpeg)
 
 # 🖥️ Frontend
 
